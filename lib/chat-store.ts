@@ -46,6 +46,87 @@ export async function addMessage(conversationId: string, role: ChatRole, content
     .eq("id", conversationId);
 }
 
+export interface ConversationSummary {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  firstQuestion: string | null;
+}
+
+// Dành cho trang quản trị: các cuộc trò chuyện gần nhất kèm số tin và câu hỏi đầu tiên.
+export async function listConversations(limit = 100): Promise<ConversationSummary[]> {
+  const db = getSupabaseAdmin();
+  const { data, error } = await db
+    .from("conversations")
+    .select("id, created_at, updated_at, messages(count)")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  if (!data?.length) return [];
+
+  const ids = data.map((c) => c.id as string);
+  const { data: firsts, error: firstsError } = await db
+    .from("messages")
+    .select("conversation_id, content")
+    .in("conversation_id", ids)
+    .eq("role", "user")
+    .order("id", { ascending: true });
+  if (firstsError) throw firstsError;
+
+  const firstByConversation = new Map<string, string>();
+  for (const m of firsts ?? []) {
+    if (!firstByConversation.has(m.conversation_id)) {
+      firstByConversation.set(m.conversation_id, m.content);
+    }
+  }
+
+  return data.map((c) => ({
+    id: c.id as string,
+    createdAt: c.created_at as string,
+    updatedAt: c.updated_at as string,
+    messageCount: (c.messages as { count: number }[])[0]?.count ?? 0,
+    firstQuestion: firstByConversation.get(c.id as string) ?? null,
+  }));
+}
+
+export interface ConversationDetail {
+  id: string;
+  createdAt: string;
+  messages: { id: number; role: ChatRole; content: string; createdAt: string }[];
+}
+
+export async function getConversation(id: string): Promise<ConversationDetail | null> {
+  if (!isValidConversationId(id)) return null;
+  const db = getSupabaseAdmin();
+
+  const { data: conversation, error } = await db
+    .from("conversations")
+    .select("id, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!conversation) return null;
+
+  const { data: messages, error: messagesError } = await db
+    .from("messages")
+    .select("id, role, content, created_at")
+    .eq("conversation_id", id)
+    .order("id", { ascending: true });
+  if (messagesError) throw messagesError;
+
+  return {
+    id: conversation.id as string,
+    createdAt: conversation.created_at as string,
+    messages: (messages ?? []).map((m) => ({
+      id: m.id as number,
+      role: m.role as ChatRole,
+      content: m.content as string,
+      createdAt: m.created_at as string,
+    })),
+  };
+}
+
 // Trả về `limit` tin gần nhất, theo thứ tự cũ → mới.
 export async function getRecentMessages(
   conversationId: string,
