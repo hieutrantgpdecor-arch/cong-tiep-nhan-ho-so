@@ -16,12 +16,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { countries, servicePackages, type ServicePackage } from "@/lib/mock-data";
-
-const degreeLevels = [
-  { value: "thpt", label: "THPT" },
-  { value: "dai_hoc", label: "Đại học" },
-  { value: "thac_si", label: "Thạc sĩ" },
-];
+import { DEGREE_LEVELS } from "@/lib/quote";
 
 const srOnlyStyle: React.CSSProperties = {
   position: "absolute",
@@ -45,13 +40,44 @@ export function QuoteForm() {
   const [selectedPackage, setSelectedPackage] = React.useState<ServicePackage>("co_ban");
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
-  const [submitted, setSubmitted] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  // Mức giá do server tính và trả về sau khi lưu yêu cầu.
+  const [result, setResult] = React.useState<{ quote: number; package: ServicePackage } | null>(null);
 
-  const chosenPackage = servicePackages.find((p) => p.id === selectedPackage)!;
-
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    if (submitting) return;
+    setError(null);
+    setResult(null);
+
+    if (!country) {
+      setError("Vui lòng chọn quốc gia muốn du học.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country, degreeLevel, package: selectedPackage, email, phone }),
+      });
+      const data = (await res.json()) as {
+        quote?: number;
+        package?: ServicePackage;
+        error?: string;
+      };
+      if (!res.ok || typeof data.quote !== "number" || !data.package) {
+        setError(data.error ?? "Chưa gửi được yêu cầu, bạn thử lại sau ít phút nhé.");
+        return;
+      }
+      setResult({ quote: data.quote, package: data.package });
+    } catch {
+      setError("Chưa gửi được yêu cầu, bạn thử lại sau ít phút nhé.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -92,7 +118,7 @@ export function QuoteForm() {
                   onValueChange={setDegreeLevel}
                   className="grid grid-cols-3 gap-2 pt-1"
                 >
-                  {degreeLevels.map((level) => (
+                  {DEGREE_LEVELS.map((level) => (
                     <label
                       key={level.value}
                       className={cn(
@@ -176,20 +202,28 @@ export function QuoteForm() {
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full sm:w-auto">
-              Nhận báo giá
+            <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={submitting}>
+              {submitting ? "Đang gửi..." : "Nhận báo giá"}
             </Button>
 
-            {submitted && (
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+
+            {result && (
               <div className="space-y-3 rounded-xl border border-primary/20 bg-accent p-5">
-                <p className="text-sm text-muted-foreground">Mức giá dự kiến cho bạn</p>
+                <p className="text-sm text-muted-foreground">
+                  Mức giá dự kiến cho gói {servicePackages.find((p) => p.id === result.package)?.name}
+                </p>
                 <p className="text-3xl font-semibold tracking-tight text-accent-foreground">
-                  {formatVnd(chosenPackage.price)}
+                  {formatVnd(result.quote)}
                 </p>
                 <div className="flex items-start gap-2 text-sm text-accent-foreground">
                   <Mail className="mt-0.5 size-4 shrink-0" />
                   <span>
-                    Báo giá đã được gửi qua email, đội ngũ sẽ liên hệ trong 24h.
+                    Yêu cầu của bạn đã được ghi nhận, đội ngũ sẽ liên hệ trong 24h.
                   </span>
                 </div>
               </div>
