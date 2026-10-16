@@ -34,12 +34,30 @@ export function ChatWidget() {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, loading, open]);
 
+  // Lịch sử hội thoại được lấy từ database (qua server), không lưu trên trình duyệt.
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch("/api/chat")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { messages?: { role: "user" | "model"; text: string }[] } | null) => {
+        if (cancelled || !data?.messages?.length) return;
+        const history: Message[] = data.messages.map((m) => ({
+          from: m.role === "user" ? "user" : "bot",
+          text: m.text,
+        }));
+        setMessages((prev) => (prev.length > initialMessages.length ? prev : [...initialMessages, ...history]));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function sendMessage(text: string) {
     const question = text.trim();
     if (!question || loading) return;
 
-    const next: Message[] = [...messages, { from: "user", text: question }];
-    setMessages(next);
+    setMessages((prev) => [...prev, { from: "user", text: question }]);
     setInput("");
     setLoading(true);
 
@@ -47,12 +65,7 @@ export function ChatWidget() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: next.map((m) => ({
-            role: m.from === "user" ? "user" : "model",
-            text: m.text,
-          })),
-        }),
+        body: JSON.stringify({ text: question }),
       });
       const data = (await res.json()) as { reply?: string; error?: string };
       setMessages((prev) => [
