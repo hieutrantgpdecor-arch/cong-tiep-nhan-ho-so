@@ -2,8 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
+import { DeleteConversationButton } from "@/components/admin/delete-conversation-button";
+import { LeadCard } from "@/components/admin/lead-card";
 import { Card } from "@/components/ui/card";
 import { getConversation } from "@/lib/chat-store";
+import { getLead } from "@/lib/lead-store";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +20,7 @@ export default async function AdminConversationDetailPage({
   const { id } = await params;
   const conversation = await getConversation(id);
   if (!conversation) notFound();
+  const lead = await getLead(conversation.id);
 
   return (
     <>
@@ -31,9 +35,11 @@ export default async function AdminConversationDetailPage({
       <AdminPageHeader
         title="Chi tiết hội thoại"
         description={`Bắt đầu ${formatDateTime(conversation.createdAt)} · ${conversation.messages.length} tin nhắn · Mã ${conversation.id}`}
+        action={<DeleteConversationButton id={conversation.id} goToList />}
       />
 
-      <Card className="max-w-3xl space-y-4 p-6">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <Card className="space-y-4 p-6">
         {conversation.messages.length === 0 && (
           <p className="text-sm text-muted-foreground">Cuộc trò chuyện này chưa có tin nhắn.</p>
         )}
@@ -58,6 +64,13 @@ export default async function AdminConversationDetailPage({
           );
         })}
       </Card>
+
+      <LeadCard
+        conversationId={conversation.id}
+        lead={lead}
+        currentMessageCount={conversation.messages.length}
+      />
+      </div>
     </>
   );
 }

@@ -85,3 +85,16 @@ export function RequestStatusBadge({ status, className }: { status: RequestStatu
     />
   );
 }
+
+export type LeadQualityValue = "good" | "ok" | "spam";
+
+export const leadQualityMeta: Record<LeadQualityValue, { label: string; tone: Tone }> = {
+  good: { label: "Good", tone: "green" },
+  ok: { label: "OK", tone: "yellow" },
+  spam: { label: "Spam", tone: "red" },
+};
+
+export function LeadQualityBadge({ quality, className }: { quality: LeadQualityValue; className?: string }) {
+  const meta = leadQualityMeta[quality];
+  return <StatusBadge tone={meta.tone} label={meta.label} className={className} />;
+}

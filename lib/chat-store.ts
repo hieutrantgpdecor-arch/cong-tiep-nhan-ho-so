@@ -46,6 +46,12 @@ export async function addMessage(conversationId: string, role: ChatRole, content
     .eq("id", conversationId);
 }
 
+// Xóa cuộc trò chuyện; các tin nhắn bên trong bị xóa theo (on delete cascade).
+export async function deleteConversation(id: string): Promise<void> {
+  const { error } = await getSupabaseAdmin().from("conversations").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export interface ConversationSummary {
   id: string;
   createdAt: string;

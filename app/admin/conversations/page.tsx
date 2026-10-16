@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
+import { DeleteConversationButton } from "@/components/admin/delete-conversation-button";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -10,7 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { LeadQualityBadge } from "@/components/status-badge";
 import { listConversations } from "@/lib/chat-store";
+import { getLeadQualities } from "@/lib/lead-store";
 import { formatDateTime } from "@/lib/format";
 
 // Đọc dữ liệu thật từ database ở mỗi lần truy cập, không prerender lúc build.
@@ -18,6 +20,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminConversationsPage() {
   const conversations = await listConversations();
+  const qualities = await getLeadQualities(conversations.map((c) => c.id));
 
   return (
     <>
@@ -32,15 +35,16 @@ export default async function AdminConversationsPage() {
             <TableRow>
               <TableHead>Câu hỏi đầu tiên</TableHead>
               <TableHead>Số tin nhắn</TableHead>
+              <TableHead>Chất lượng lead</TableHead>
               <TableHead>Bắt đầu</TableHead>
               <TableHead>Tin gần nhất</TableHead>
-              <TableHead className="w-10" />
+              <TableHead className="w-40" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {conversations.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   Chưa có cuộc trò chuyện nào.
                 </TableCell>
               </TableRow>
@@ -56,14 +60,21 @@ export default async function AdminConversationsPage() {
                   </Link>
                 </TableCell>
                 <TableCell>{conv.messageCount} tin nhắn</TableCell>
+                <TableCell>
+                  {qualities.has(conv.id) ? (
+                    <LeadQualityBadge quality={qualities.get(conv.id)!} />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Chưa trích xuất</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDateTime(conv.createdAt)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDateTime(conv.updatedAt)}
                 </TableCell>
-                <TableCell>
-                  <ChevronRight className="size-4 text-muted-foreground" />
+                <TableCell className="text-right">
+                  <DeleteConversationButton id={conv.id} className="relative z-10 flex justify-end" />
                 </TableCell>
               </TableRow>
             ))}
