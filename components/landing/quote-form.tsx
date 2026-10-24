@@ -35,6 +35,7 @@ function formatVnd(value: number) {
 }
 
 export function QuoteForm() {
+  const [fullName, setFullName] = React.useState("");
   const [country, setCountry] = React.useState<string>("");
   const [degreeLevel, setDegreeLevel] = React.useState<string>("dai_hoc");
   const [selectedPackage, setSelectedPackage] = React.useState<ServicePackage>("co_ban");
@@ -61,7 +62,7 @@ export function QuoteForm() {
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country, degreeLevel, package: selectedPackage, email, phone }),
+        body: JSON.stringify({ fullName, country, degreeLevel, package: selectedPackage, email, phone }),
       });
       const data = (await res.json()) as {
         quote?: number;
@@ -94,6 +95,21 @@ export function QuoteForm() {
 
         <Card className="mt-10 p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Họ và tên</Label>
+              <Input
+                id="fullName"
+                type="text"
+                required
+                minLength={2}
+                maxLength={100}
+                autoComplete="name"
+                placeholder="Nguyễn Văn A"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="country">Quốc gia muốn du học</Label>

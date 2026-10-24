@@ -10,6 +10,7 @@ export const DEGREE_LEVELS = [
 export type DegreeLevel = (typeof DEGREE_LEVELS)[number]["value"];
 
 export interface QuoteInput {
+  fullName: string;
   country: string;
   degreeLevel: DegreeLevel;
   package: ServicePackage;
@@ -24,6 +25,7 @@ export function parseQuoteInput(body: unknown): QuoteInput | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
   if (
+    typeof b.fullName !== "string" ||
     typeof b.country !== "string" ||
     typeof b.degreeLevel !== "string" ||
     typeof b.package !== "string" ||
@@ -33,10 +35,12 @@ export function parseQuoteInput(body: unknown): QuoteInput | null {
     return null;
   }
 
+  const fullName = b.fullName.trim().replace(/\s+/g, " ");
   const country = b.country.trim();
   const email = b.email.trim();
   const phone = b.phone.trim();
 
+  if (fullName.length < 2 || fullName.length > 100) return null;
   if (!(countries as readonly string[]).includes(country)) return null;
   if (!DEGREE_LEVELS.some((d) => d.value === b.degreeLevel)) return null;
   if (!(b.package in PACKAGE_PRICES)) return null;
@@ -48,6 +52,7 @@ export function parseQuoteInput(body: unknown): QuoteInput | null {
   }
 
   return {
+    fullName,
     country,
     degreeLevel: b.degreeLevel as DegreeLevel,
     package: b.package as ServicePackage,

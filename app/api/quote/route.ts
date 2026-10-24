@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const input = parseQuoteInput(body);
   if (!input) {
     return Response.json(
-      { error: "Vui lòng kiểm tra lại quốc gia, bậc học, gói dịch vụ, email và số điện thoại." },
+      { error: "Vui lòng kiểm tra lại họ tên, quốc gia, bậc học, gói dịch vụ, email và số điện thoại." },
       { status: 400 },
     );
   }
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const { error } = await getSupabaseAdmin().from("requests").insert({
+      full_name: input.fullName,
       country: input.country,
       degree_level: input.degreeLevel,
       package: input.package,
