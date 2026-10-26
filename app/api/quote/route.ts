@@ -1,4 +1,6 @@
+import { after } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { notifyQuoteWebhook } from "@/lib/quote-webhook";
 import { PACKAGE_PRICES } from "@/lib/pricing";
 import { parseQuoteInput } from "@/lib/quote";
 
@@ -39,6 +41,16 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  // Chạy sau khi đã trả lời khách, nên webhook chậm hay lỗi không ảnh hưởng yêu cầu đã lưu.
+  after(() =>
+    notifyQuoteWebhook({
+      fullName: input.fullName,
+      email: input.email,
+      package: input.package,
+      quoteVnd: quote,
+    }),
+  );
 
   return Response.json({ quote, package: input.package });
 }
