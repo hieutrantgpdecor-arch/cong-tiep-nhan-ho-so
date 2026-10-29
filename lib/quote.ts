@@ -20,6 +20,11 @@ export interface QuoteInput {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Dùng chung cho form (báo lỗi sớm) và server (kiểm tra lại, không tin trình duyệt).
+export function isValidEmail(email: string): boolean {
+  return email.length <= 254 && EMAIL_RE.test(email);
+}
+
 // Trả về dữ liệu đã làm sạch hoặc null nếu không hợp lệ.
 export function parseQuoteInput(body: unknown): QuoteInput | null {
   if (!body || typeof body !== "object") return null;
@@ -44,7 +49,7 @@ export function parseQuoteInput(body: unknown): QuoteInput | null {
   if (!(countries as readonly string[]).includes(country)) return null;
   if (!DEGREE_LEVELS.some((d) => d.value === b.degreeLevel)) return null;
   if (!(b.package in PACKAGE_PRICES)) return null;
-  if (email.length > 254 || !EMAIL_RE.test(email)) return null;
+  if (!isValidEmail(email)) return null;
 
   const digits = phone.replace(/\D/g, "").length;
   if (phone.length > 30 || !/^\+?[\d\s.\-()]+$/.test(phone) || digits < 9 || digits > 15) {

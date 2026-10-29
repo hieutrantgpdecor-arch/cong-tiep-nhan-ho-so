@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { countries, servicePackages, type ServicePackage } from "@/lib/mock-data";
-import { DEGREE_LEVELS } from "@/lib/quote";
+import { DEGREE_LEVELS, isValidEmail } from "@/lib/quote";
 
 const srOnlyStyle: React.CSSProperties = {
   position: "absolute",
@@ -34,12 +34,20 @@ function formatVnd(value: number) {
   return value.toLocaleString("vi-VN") + "₫";
 }
 
+function emailErrorMessage(value: string): string | null {
+  const email = value.trim();
+  if (!email) return "Vui lòng nhập email liên hệ.";
+  if (!isValidEmail(email)) return "Email chưa đúng định dạng, vui lòng nhập lại (ví dụ: ban@email.com).";
+  return null;
+}
+
 export function QuoteForm() {
   const [fullName, setFullName] = React.useState("");
   const [country, setCountry] = React.useState<string>("");
   const [degreeLevel, setDegreeLevel] = React.useState<string>("dai_hoc");
   const [selectedPackage, setSelectedPackage] = React.useState<ServicePackage>("co_ban");
   const [email, setEmail] = React.useState("");
+  const [emailError, setEmailError] = React.useState<string | null>(null);
   const [phone, setPhone] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -57,12 +65,26 @@ export function QuoteForm() {
       return;
     }
 
+    const emailProblem = emailErrorMessage(email);
+    if (emailProblem) {
+      setEmailError(emailProblem);
+      document.getElementById("email")?.focus();
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, country, degreeLevel, package: selectedPackage, email, phone }),
+        body: JSON.stringify({
+          fullName,
+          country,
+          degreeLevel,
+          package: selectedPackage,
+          email: email.trim(),
+          phone,
+        }),
       });
       const data = (await res.json()) as {
         quote?: number;
@@ -198,12 +220,26 @@ export function QuoteForm() {
                 <Label htmlFor="email">Email liên hệ</Label>
                 <Input
                   id="email"
-                  type="email"
-                  required
+                  type="text"
+                  inputMode="email"
                   placeholder="ban@email.com"
+                  autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={emailError ? true : undefined}
+                  aria-describedby={emailError ? "email-error" : undefined}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError(emailErrorMessage(e.target.value));
+                  }}
+                  onBlur={() => {
+                    if (email) setEmailError(emailErrorMessage(email));
+                  }}
                 />
+                {emailError && (
+                  <p id="email-error" role="alert" className="text-sm text-destructive">
+                    {emailError}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Số điện thoại</Label>
